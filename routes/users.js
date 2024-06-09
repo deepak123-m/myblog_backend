@@ -23,6 +23,7 @@ router.post("/createuser", async (req, res) => {
       userName: req.body.userName,
       password: secPass,
       image: req.body.image,
+      hook: req.body.hook,
     });
     const data = {
       user: {
@@ -38,10 +39,30 @@ router.post("/createuser", async (req, res) => {
   }
 });
 
+router.put("/deletehook", async (req, res) => {
+  const user = await User.findByIdAndUpdate(req.body.id, { hook: "" });
+  res.json(user);
+});
+
+router.put("/unfollow", async (req, res) => {
+  try {
+    console.log("yes unfollow");
+    const mainid = await User.findByIdAndUpdate(req.body.mainid, {
+      $pull: { following: req.body.nrmlid },
+    });
+    const nrmlid = await User.findByIdAndUpdate(req.body.nrmlid, {
+      $pull: { followers: req.body.mainid },
+    });
+    res.status(200).json({ nrmlid });
+  } catch (error) {
+    res.status(500).send("Internal Server error occured");
+  }
+});
+
 router.post("/login", async (req, res) => {
   let success = false;
 
-  const { email, password } = req.body;
+  const { email, password, hook } = req.body;
   try {
     let user = await User.findOne({ email });
     if (!user) {
@@ -52,12 +73,15 @@ router.post("/login", async (req, res) => {
     const passwordCompare = await bcrypt.compare(password, user.password);
     if (!passwordCompare) {
       success = false;
-      return res
-        .status(400)
-        .json({
-          success,
-          error: "Please try to login with correct credentials",
-        });
+      return res.status(400).json({
+        success,
+        error: "Please try to login with correct credentials",
+      });
+    }
+
+    if (user.hook === "" && hook != "") {
+      await User.findByIdAndUpdate(user.id, { hook: hook });
+      user = await User.findOne({ email });
     }
     const data = {
       user: {

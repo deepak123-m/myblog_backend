@@ -28,6 +28,10 @@ const UserSchema = new Schema({
   followers: {
     type: Array,
   },
+  hook:{
+    type:String,
+    default:"",
+  },
 });
 
 const User = mongoose.model("user", UserSchema);

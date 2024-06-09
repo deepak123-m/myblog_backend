@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
-
-const comment = require("../models/comment")
+const User = require("../models/user");
+const comment = require("../models/comment");
 const Posts = require("../models/post");
-
+const axios = require("axios");
 router.get("/getpost", async (req, res) => {
   try {
     const resp = await Posts.find({});
@@ -23,8 +23,34 @@ router.post("/addpost", async (req, res) => {
       image: req.body.image,
       description: req.body.description,
       profileimage: req.body.profileimage,
-      title:req.body.title
+      title: req.body.title,
     });
+
+    let hookUser = await User.findById(req.body.user);
+    if (!hookUser) {
+      console.log("No User Found ...");
+    }
+    console.log("hookUserrrrrrrrrrrrr............");
+    console.log(hookUser);
+    if (hookUser.followers.length !== 0) {
+      for (let a of hookUser.followers) {
+        let findHook = await User.findById(a);
+        if (findHook.hook !== "") {
+          console.log("Hokkk User Founddddddddd");
+          console.log(findHook.hook);
+          axios
+            .post(findHook.hook, {
+              text: `New Blog Posted By ${req.body.name}`,
+            })
+            .then(() => {
+              console.log("lucid-success");
+            })
+            .catch(() => {
+              console.log("failed lucid");
+            });
+        }
+      }
+    }
 
     const savepost = await post.save();
     res.json(savepost);
@@ -55,26 +81,35 @@ router.put("/updatepostlike/:id", async (req, res) => {
   }
 });
 
-router.post('/comment/new', async (req, res) => {
+router.post("/comment/new", async (req, res) => {
   try {
-    console.log("nameee")
-     console.log(req.body)
-      const commentdata = await new comment({name:req.body.name,postId:req.body.postId,comments:req.body.comments});
-      commentdata.save();
-
-      res.status(200).json('Comment saved successfully');
+    console.log("nameee");
+    console.log(req.body);
+    const commentdata = await new comment({
+      name: req.body.name,
+      postId: req.body.postId,
+      comments: req.body.comments,
+    });
+    commentdata.save();
+    const hookUser = await User.findById(req.body.userid);
+    if (hookUser.hook !== "") {
+      axios.post(hookUser.hook, {
+        text: `New Comment was added to your Blog "${req.body.title}" by Author: ${req.body.name}`,
+      });
+    }
+    res.status(200).json("Comment saved successfully");
   } catch (error) {
-      res.status(500).json(error);
+    res.status(500).json(error);
   }
 });
 
-router.get('/comments', async (req, res) => {
+router.get("/comments", async (req, res) => {
   try {
-      const comments = await comment.find({});
-      
-      res.status(200).json(comments);
+    const comments = await comment.find({});
+
+    res.status(200).json(comments);
   } catch (error) {
-      res.status(500).json(error)
+    res.status(500).json(error);
   }
 });
 
